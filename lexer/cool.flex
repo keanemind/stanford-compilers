@@ -32,7 +32,7 @@ extern FILE *fin; /* we read from this file */
 		YY_FATAL_ERROR( "read() in flex scanner failed");
 
 char string_buf[MAX_STR_CONST]; /* to assemble string constants */
-char *string_buf_ptr;
+int string_buf_idx;
 
 extern int curr_lineno;
 extern int verbose_flag;
@@ -245,7 +245,7 @@ f[aA][lL][sS][eE] {
   */
 
 \" {
-  string_buf_ptr = string_buf;
+  string_buf_idx = 0;
   BEGIN(STRING);
 }
 
@@ -255,7 +255,7 @@ f[aA][lL][sS][eE] {
     BEGIN(INITIAL);
 
     /* String too long. */
-    if (string_buf_ptr == MAX_STR_CONST) {
+    if (string_buf_idx == MAX_STR_CONST) {
       cool_yylval.error_msg = "String constant too long";
       return (ERROR);
     }
@@ -266,7 +266,7 @@ f[aA][lL][sS][eE] {
       return (ERROR);
     }
 
-    *string_buf_ptr = '\0';
+    string_buf[string_buf_idx] = '\0';
 
     cool_yylval.symbol = stringtab.add_string(string_buf);
     return (STR_CONST);
@@ -277,7 +277,7 @@ f[aA][lL][sS][eE] {
     BEGIN(INITIAL);
 
     /* String too long. */
-    if (string_buf_ptr == MAX_STR_CONST) {
+    if (string_buf_idx == MAX_STR_CONST) {
       cool_yylval.error_msg = "String constant too long";
     }
 
@@ -314,37 +314,37 @@ f[aA][lL][sS][eE] {
    */
 
   \\n {
-    *string_buf_ptr++ = '\n';
+    string_buf[string_buf_idx++] = '\n';
   }
 
   \\t {
-    *string_buf_ptr++ = '\t';
+    string_buf[string_buf_idx++] = '\t';
   }
 
   \\b {
-    *string_buf_ptr++ = '\b';
+    string_buf[string_buf_idx++] = '\b';
   }
 
   \\f {
-    *string_buf_ptr++ = '\f';
+    string_buf[string_buf_idx++] = '\f';
   }
 
   \\(.|\n) {
-    *string_buf_ptr++ = yytext[1];
+    string_buf[string_buf_idx++] = yytext[1];
   }
 
   [^\\\n\"]+ {
-    char *yptr = yytext;
+    int yidx = 0;
 
-    while ( *yptr ) {
+    while ( yytext[yidx] ) {
       /* Note that this loop is allowed to go too far, such that
-       * string_buf_ptr == MAX_STR_CONST by the end of the loop, leaving no room
+       * string_buf_idx == MAX_STR_CONST by the end of the loop, leaving no room
        * for a null terminator to be added to string_buf, in order to indicate
        * to the end-of-string rules above (double-quote and newline) that the
        * string literal was too long.
        */
-      if (string_buf_ptr < MAX_STR_CONST) {
-        *string_buf_ptr++ = *yptr++;
+      if (string_buf_idx < MAX_STR_CONST) {
+        string_buf[string_buf_idx++] = yytext[yidx++];
       }
     }
   }
