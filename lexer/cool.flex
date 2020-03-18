@@ -42,6 +42,8 @@ extern YYSTYPE cool_yylval;
 /*
  *  Add Your own definitions here
  */
+Boolean seenNull;
+int commentDepth;
 
 %}
 
@@ -55,17 +57,31 @@ extern YYSTYPE cool_yylval;
 %%
 
  /*
-  *  Nested comments
+  * Nested comments.
   */
 
 "(*" {
+  commentDepth = 0;
   BEGIN(COMMENT)
 }
 
 <COMMENT> {
+  /* Start of nested comment. */
+  "*(" {
+    commentDepth += 1;
+  }
+
   /* End of comment. */
   "*)" {
-    BEGIN(INITIAL);
+    commentDepth -= 1;
+    if (commentDepth == 0) {
+      BEGIN(INITIAL);
+    }
+  }
+
+  /* Newline. */
+  \n {
+    curr_lineno += 1;
   }
 
   /* Unexpected EOF. */
@@ -73,12 +89,26 @@ extern YYSTYPE cool_yylval;
     cool_yylval.error_msg = "EOF in comment";
     return (ERROR);
   }
+
+  \\(.|\n) {
+    if (yytext[1] == '\n') {
+      curr_lineno += 1;
+    }
+  }
+
+  [^\\\n*]+ {}
 }
 
 "*)" {
   cool_yylval.error_msg = "Unmatched *)";
   return (ERROR);
 }
+
+ /*
+  * Single-line comments.
+  */
+
+--[^\n]* {}
 
  /*
   *  The single-character tokens.
@@ -110,6 +140,14 @@ extern YYSTYPE cool_yylval;
 
 "." {
   return (int)'.';
+}
+
+";" {
+  return (int)';';
+}
+
+"," {
+  return (int)',';
 }
 
 "+" {
@@ -230,10 +268,12 @@ extern YYSTYPE cool_yylval;
 }
 
 t[rR][uU][eE] {
+  cool_yylval.boolean = true;
   return (BOOL_CONST);
 }
 
 f[aA][lL][sS][eE] {
+  cool_yylval.boolean = false;
   return (BOOL_CONST);
 }
 
@@ -246,6 +286,7 @@ f[aA][lL][sS][eE] {
 
 \" {
   string_buf_idx = 0;
+  seenNull = false;
   BEGIN(STRING);
 }
 
@@ -261,19 +302,20 @@ f[aA][lL][sS][eE] {
     }
 
     /* Null character encountered. */
-    else if () {
+    else if (seenNull) {
       cool_yylval.error_msg = "String contains null character";
       return (ERROR);
     }
 
     string_buf[string_buf_idx] = '\0';
 
-    cool_yylval.symbol = stringtab.add_string(string_buf);
+    cool_yylval.symbol = stringtable.add_string(string_buf);
     return (STR_CONST);
   }
 
   /* Unexpected newline. */
   \n {
+    curr_lineno += 1;
     BEGIN(INITIAL);
 
     /* String too long. */
@@ -282,7 +324,7 @@ f[aA][lL][sS][eE] {
     }
 
     /* Null character encountered. */
-    else if () {
+    else if (seenNull) {
       cool_yylval.error_msg = "String contains null character";
     }
 
@@ -298,10 +340,6 @@ f[aA][lL][sS][eE] {
   <<EOF>> {
     cool_yylval.error_msg = "EOF in string constant";
     return (ERROR);
-  }
-
-  \0 {
-    /* TODO: Set flag that a null was encountered. */
   }
 
   /*
@@ -330,6 +368,9 @@ f[aA][lL][sS][eE] {
   }
 
   \\(.|\n) {
+    if (yytext[1] == '\n') {
+      curr_lineno += 1;
+    }
     string_buf[string_buf_idx++] = yytext[1];
   }
 
@@ -344,22 +385,57 @@ f[aA][lL][sS][eE] {
        * string literal was too long.
        */
       if (string_buf_idx < MAX_STR_CONST) {
-        string_buf[string_buf_idx++] = yytext[yidx++];
+        string_buf[string_buf_idx] = yytext[yidx];
+        if (yytext[yidx] == '\0') {
+          seenNull = true;
+        }
+        string_buf_idx += 1;
+        yidx += 1;
       }
     }
   }
+}
 
+/*
+ * Integer constants.
+ */
+
+[0-9]+ {
+  cool_yylval.symbols = inttable.add_string(yytext);
+  return (INT_CONST);
+}
+
+/*
+ * Whitespace.
+ */
+
+[ \f\r\t\v] {}
+
+\n {
+  curr_lineno += 1;
 }
 
  /*
-  *  Catch everything else.
+  * Identifiers.
   */
 
-/* Commented out for testing.
-[^aa] {
-  cool_yylval.error_msg = "Invalid token: " + yytext;
+[a-z][a-zA-Z0-9]* {
+  cool_yylval.symbol = stringtable.add_string(yytext);
+  return (OBJECTID);
+}
+
+[A-Z][a-zA-Z0-0]* {
+  cool_yylval.symbol = stringtable.add_string(yytext);
+  return (TYPEID);
+}
+
+ /*
+  *  Catch everything else as an error.
+  */
+
+[^a]|a {
+  cool_yylval.error_msg = yytext;
   return (ERROR)
 }
-*/
 
 %%
