@@ -62,16 +62,16 @@ int commentDepth;
 
 "(*" {
   commentDepth = 0;
-  BEGIN(COMMENT)
+  BEGIN(COMMENT);
 }
 
-<COMMENT> {
-  /* Start of nested comment. */
+<COMMENT>{
+    /* Start of nested comment. */
   "*(" {
     commentDepth += 1;
   }
 
-  /* End of comment. */
+    /* End of comment. */
   "*)" {
     commentDepth -= 1;
     if (commentDepth == 0) {
@@ -79,12 +79,12 @@ int commentDepth;
     }
   }
 
-  /* Newline. */
+    /* Newline. */
   \n {
     curr_lineno += 1;
   }
 
-  /* Unexpected EOF. */
+    /* Unexpected EOF. */
   <<EOF>> {
     cool_yylval.error_msg = "EOF in comment";
     return (ERROR);
@@ -182,15 +182,15 @@ int commentDepth;
   *  The multiple-character operators.
   */
 
-=> {
+"=>" {
  return (DARROW);
 }
 
-<- {
+"<-" {
   return (ASSIGN);
 }
 
-<= {
+"<=" {
   return (LE);
 }
 
@@ -290,8 +290,8 @@ f[aA][lL][sS][eE] {
   BEGIN(STRING);
 }
 
-<STRING> {
-  /* End of string. */
+<STRING>{
+    /* End of string. */
   \" {
     BEGIN(INITIAL);
 
@@ -313,7 +313,7 @@ f[aA][lL][sS][eE] {
     return (STR_CONST);
   }
 
-  /* Unexpected newline. */
+    /* Unexpected newline. */
   \n {
     curr_lineno += 1;
     BEGIN(INITIAL);
@@ -336,20 +336,20 @@ f[aA][lL][sS][eE] {
     return (ERROR);
   }
 
-  /* Unexpected EOF. */
+    /* Unexpected EOF. */
   <<EOF>> {
     cool_yylval.error_msg = "EOF in string constant";
     return (ERROR);
   }
 
-  /*
-   * Strings are enclosed in double quotes "...". Within a string, a sequence
-   * ‘\c’ denotes the character ‘c’, with the exception of the following:
-   *  \b backspace
-   *  \t tab
-   *  \n newline
-   *  \f formfeed
-   */
+    /*
+    * Strings are enclosed in double quotes "...". Within a string, a sequence
+    * ‘\c’ denotes the character ‘c’, with the exception of the following:
+    *  \b backspace
+    *  \t tab
+    *  \n newline
+    *  \f formfeed
+    */
 
   \\n {
     string_buf[string_buf_idx++] = '\n';
@@ -396,18 +396,18 @@ f[aA][lL][sS][eE] {
   }
 }
 
-/*
- * Integer constants.
- */
+ /*
+  * Integer constants.
+  */
 
 [0-9]+ {
-  cool_yylval.symbols = inttable.add_string(yytext);
+  cool_yylval.symbol = inttable.add_string(yytext);
   return (INT_CONST);
 }
 
-/*
- * Whitespace.
- */
+ /*
+  * Whitespace.
+  */
 
 [ \f\r\t\v] {}
 
@@ -419,13 +419,13 @@ f[aA][lL][sS][eE] {
   * Identifiers.
   */
 
-[a-z][a-zA-Z0-9]* {
-  cool_yylval.symbol = stringtable.add_string(yytext);
+[a-z][a-zA-Z0-9_]* {
+  cool_yylval.symbol = idtable.add_string(yytext);
   return (OBJECTID);
 }
 
-[A-Z][a-zA-Z0-0]* {
-  cool_yylval.symbol = stringtable.add_string(yytext);
+[A-Z][a-zA-Z0-9_]* {
+  cool_yylval.symbol = idtable.add_string(yytext);
   return (TYPEID);
 }
 
@@ -435,7 +435,7 @@ f[aA][lL][sS][eE] {
 
 [^a]|a {
   cool_yylval.error_msg = yytext;
-  return (ERROR)
+  return (ERROR);
 }
 
 %%
