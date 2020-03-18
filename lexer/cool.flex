@@ -61,13 +61,13 @@ int commentDepth;
   */
 
 "(*" {
-  commentDepth = 0;
+  commentDepth = 1;
   BEGIN(COMMENT);
 }
 
 <COMMENT>{
     /* Start of nested comment. */
-  "*(" {
+  "(*" {
     commentDepth += 1;
   }
 
@@ -90,13 +90,9 @@ int commentDepth;
     return (ERROR);
   }
 
-  \\(.|\n) {
-    if (yytext[1] == '\n') {
-      curr_lineno += 1;
-    }
-  }
-
-  [^\\\n*]+ {}
+  "*" {}
+  "(" {}
+  [^\n*(]+ {}
 }
 
 "*)" {
@@ -377,7 +373,7 @@ f[aA][lL][sS][eE] {
   [^\\\n\"]+ {
     int yidx = 0;
 
-    while ( yytext[yidx] ) {
+    while (yytext[yidx]) {
       /* Note that this loop is allowed to go too far, such that
        * string_buf_idx == MAX_STR_CONST by the end of the loop, leaving no room
        * for a null terminator to be added to string_buf, in order to indicate
