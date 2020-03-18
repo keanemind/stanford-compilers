@@ -86,6 +86,7 @@ int commentDepth;
 
     /* Unexpected EOF. */
   <<EOF>> {
+    BEGIN(INITIAL);
     cool_yylval.error_msg = "EOF in comment";
     return (ERROR);
   }
@@ -333,10 +334,11 @@ f[aA][lL][sS][eE] {
   }
 
     /* Unexpected EOF. */
-  <<EOF>> {
-    cool_yylval.error_msg = "EOF in string constant";
-    return (ERROR);
-  }
+    <<EOF>> {
+      BEGIN(INITIAL);
+      cool_yylval.error_msg = "EOF in string constant";
+      return (ERROR);
+    }
 
     /*
     * Strings are enclosed in double quotes "...". Within a string, a sequence
@@ -363,14 +365,20 @@ f[aA][lL][sS][eE] {
     string_buf[string_buf_idx++] = '\f';
   }
 
-  \\(.|\n) {
+  \\[^\0] {
     if (yytext[1] == '\n') {
       curr_lineno += 1;
     }
     string_buf[string_buf_idx++] = yytext[1];
   }
 
-  [^\\\n\"]+ {
+  \\ {}
+
+  \0 {
+    seenNull = true;
+  }
+
+  [^\\\n\"\0]+ {
     int yidx = 0;
 
     while (yytext[yidx]) {
@@ -382,9 +390,6 @@ f[aA][lL][sS][eE] {
        */
       if (string_buf_idx < MAX_STR_CONST) {
         string_buf[string_buf_idx] = yytext[yidx];
-        if (yytext[yidx] == '\0') {
-          seenNull = true;
-        }
         string_buf_idx += 1;
         yidx += 1;
       }
